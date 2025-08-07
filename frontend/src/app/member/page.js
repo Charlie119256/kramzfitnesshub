@@ -18,11 +18,13 @@ import {
   HeartIcon,
   TrophyIcon
 } from '@heroicons/react/24/outline';
+import ResponsiveAlert from '../../components/common/ResponsiveAlert';
 
 export default function MemberDashboard() {
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [checkingAuth, setCheckingAuth] = useState(true);
   const router = useRouter();
 
@@ -33,7 +35,12 @@ export default function MemberDashboard() {
     const userRole = localStorage.getItem('userRole');
     const userData = localStorage.getItem('userData');
     
-    console.log('Auth check:', { adminToken, memberToken, userRole, userData });
+    console.log('Debug - Auth check:', { 
+      hasAdminToken: !!adminToken, 
+      hasMemberToken: !!memberToken, 
+      userRole, 
+      userData: userData ? JSON.parse(userData) : null 
+    });
     
     // Get member name from user data
     let memberName = "Member";
@@ -49,12 +56,11 @@ export default function MemberDashboard() {
       }
     }
     
-    // Temporary bypass for testing - remove this in production
+    // Check if user is authenticated
     if ((!adminToken && !memberToken) || !userRole) {
-      console.log('No token or role, but allowing access for testing');
-      // Comment out the redirect for testing
-      // router.push('/login');
-      // return;
+      console.log('No token or role found, redirecting to login');
+      router.push('/login');
+      return;
     }
     
     // Check if user has member role
@@ -97,83 +103,135 @@ export default function MemberDashboard() {
     try {
       setLoading(true);
       
-      // Static data for now
-      const staticData = {
-        memberName: memberName,
-        membershipPlan: "Premium Plan",
-        membershipExpiry: "2024-12-31",
-        daysUntilExpiry: 45,
-        totalWorkouts: 28,
-        thisMonthWorkouts: 8,
-        lastWorkout: "2024-01-15",
-        currentStreak: 5,
-        longestStreak: 12,
-        totalCaloriesBurned: 12500,
-        thisMonthCalories: 3200,
-        bmi: 24.5,
-        weight: 75.2,
-        targetWeight: 70.0,
-        recentAnnouncements: [
-          {
-            id: 1,
-            title: "New Equipment Available",
-            content: "We've added new treadmills and weight machines. Check them out!",
-            created_at: "2024-01-15T10:30:00Z",
-            is_important: true
-          },
-          {
-            id: 2,
-            title: "Fitness Challenge Starting",
-            content: "Join our 30-day fitness challenge starting next week. Great prizes await!",
-            created_at: "2024-01-14T14:20:00Z",
-            is_important: false
-          },
-          {
-            id: 3,
-            title: "Holiday Schedule Update",
-            content: "The gym will have modified hours during the upcoming holidays.",
-            created_at: "2024-01-13T09:15:00Z",
-            is_important: false
+      const token = localStorage.getItem('adminToken') || localStorage.getItem('memberToken');
+      
+      if (!token) {
+        console.log('No authentication token found, redirecting to login');
+        router.push('/login');
+        return;
+      }
+
+             // Decode and verify the token before making the API call
+       try {
+         const base64Url = token.split('.')[1];
+         const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+         const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+           return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+         }).join(''));
+         const decodedToken = JSON.parse(jsonPayload);
+         
+         console.log('Debug - Decoded token:', decodedToken);
+         
+         // Validate that the token has a user_id (basic validation)
+         if (!decodedToken.user_id || typeof decodedToken.user_id !== 'number') {
+           console.log('Debug - Token has invalid user_id:', decodedToken.user_id);
+           console.log('Debug - Clearing tokens and redirecting to login');
+           localStorage.removeItem('adminToken');
+           localStorage.removeItem('memberToken');
+           localStorage.removeItem('userRole');
+           localStorage.removeItem('userData');
+           localStorage.removeItem('userEmail');
+           router.push('/login');
+           return;
+         }
+       } catch (decodeError) {
+         console.log('Debug - Failed to decode token:', decodeError);
+         // If we can't decode the token, it's invalid
+         localStorage.removeItem('adminToken');
+         localStorage.removeItem('memberToken');
+         localStorage.removeItem('userRole');
+         localStorage.removeItem('userData');
+         localStorage.removeItem('userEmail');
+         router.push('/login');
+         return;
+       }
+
+      console.log('Debug - Using token for API request:', token.substring(0, 20) + '...');
+      console.log('Making API request to dashboard-data...');
+      
+      // Fetch real dashboard data from API
+      const response = await fetch('http://localhost:5000/api/member-dashboard/dashboard-data', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.log('Error response:', errorText);
+        
+        // If it's a 401 or 403 error, the token might be invalid
+        if (response.status === 401 || response.status === 403) {
+          console.log('Token appears to be invalid, redirecting to login');
+          // Clear invalid tokens
+          localStorage.removeItem('adminToken');
+          localStorage.removeItem('memberToken');
+          localStorage.removeItem('userRole');
+          localStorage.removeItem('userData');
+          localStorage.removeItem('userEmail');
+          router.push('/login');
+          return;
+        }
+        
+        // If it's a 404 error, it might be a member profile issue
+        if (response.status === 404) {
+          console.log('Member profile not found, checking if this is after email change');
+          try {
+            const errorData = JSON.parse(errorText);
+            console.log('Error data:', errorData);
+            
+            // If this is after an email change, the user might need to log in again
+            if (errorData.debug && errorData.debug.user_exists) {
+              console.log('User exists but member profile not found - this might be after email change');
+              // Clear tokens and redirect to login
+              localStorage.removeItem('adminToken');
+              localStorage.removeItem('memberToken');
+              localStorage.removeItem('userRole');
+              localStorage.removeItem('userData');
+              localStorage.removeItem('userEmail');
+              router.push('/login');
+              return;
+            }
+          } catch (parseError) {
+            console.log('Could not parse error response as JSON');
           }
-        ],
-        upcomingWorkouts: [
-          {
-            id: 1,
-            name: "Cardio Session",
-            date: "2024-01-18",
-            time: "09:00",
-            duration: "45 min"
-          },
-          {
-            id: 2,
-            name: "Strength Training",
-            date: "2024-01-20",
-            time: "16:00",
-            duration: "60 min"
-          },
-          {
-            id: 3,
-            name: "Yoga Class",
-            date: "2024-01-22",
-            time: "07:30",
-            duration: "30 min"
-          }
-        ],
-        monthlyProgress: [
-          { week: 1, workouts: 3, calories: 800 },
-          { week: 2, workouts: 4, calories: 950 },
-          { week: 3, workouts: 2, calories: 600 },
-          { week: 4, workouts: 5, calories: 1200 }
-        ]
+        }
+        
+        throw new Error(`Failed to fetch dashboard data: ${response.status} ${errorText}`);
+      }
+
+      const data = await response.json();
+      console.log('Dashboard data received:', data);
+      
+      // Transform API data to match our component structure
+      const dashboardData = {
+        memberName: data.memberInfo ? `${data.memberInfo.first_name} ${data.memberInfo.last_name}` : memberName,
+        membershipPlan: data.hasActiveMembership ? data.membership?.membershipType?.name : "No Active Plan",
+        membershipExpiry: data.hasActiveMembership ? data.membership?.end_date : null,
+        daysUntilExpiry: data.remainingDays || 0,
+        totalWorkouts: data.totalWorkoutDays || 0,
+        thisMonthWorkouts: 0, // Not provided by API
+        lastWorkout: data.recentAttendance?.[0]?.date || "No recent workouts",
+        currentStreak: 0, // Would need separate API call
+        longestStreak: 0, // Would need separate API call
+        totalCaloriesBurned: 0, // Not provided by API
+        thisMonthCalories: 0, // Not provided by API
+        bmi: 0, // Not provided by API
+        weight: 0, // Not provided by API
+        targetWeight: 0, // Not provided by API
+        recentAnnouncements: data.announcements || [],
+        upcomingWorkouts: [], // Not provided by API
+        monthlyProgress: [] // Not provided by API
       };
       
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      setDashboardData(staticData);
+      setDashboardData(dashboardData);
     } catch (err) {
+      console.error('Error in fetchDashboardData:', err);
       setError(err.message);
-      console.error('Error loading dashboard data:', err);
     } finally {
       setLoading(false);
     }
@@ -247,6 +305,20 @@ export default function MemberDashboard() {
   return (
     <div className="min-h-screen bg-gray-50">
       <MemberNavbar memberName={memberName} activeMenu="dashboard" />
+      
+      {/* Responsive Success and Error Messages */}
+      <ResponsiveAlert
+        type="success"
+        message={success}
+        onClose={() => setSuccess('')}
+        fullScreen={success && success.includes('successfully')}
+      />
+      <ResponsiveAlert
+        type="error"
+        message={error}
+        onClose={() => setError('')}
+        fullScreen={error && (error.includes('Failed to fetch dashboard data') || error.includes('No authentication token found'))}
+      />
       
       {/* Main Content */}
       <div className="lg:ml-64 pt-16">

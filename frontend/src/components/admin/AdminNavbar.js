@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 import Image from 'next/image';
 import { 
   BellIcon,
@@ -15,13 +15,17 @@ import {
   CalendarIcon,
   CurrencyDollarIcon,
   ExclamationTriangleIcon,
-  WrenchScrewdriverIcon
+  WrenchScrewdriverIcon,
+  DocumentTextIcon,
+  QrCodeIcon,
+  CreditCardIcon
 } from '@heroicons/react/24/outline';
 
 export default function AdminNavbar({ adminName = "Admin" }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeMenu, setActiveMenu] = useState('dashboard');
   const router = useRouter();
+  const pathname = usePathname();
 
   const handleLogout = () => {
     // Clear stored data
@@ -36,8 +40,11 @@ export default function AdminNavbar({ adminName = "Admin" }) {
 
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: ChartBarIcon, href: '/admin' },
-    { id: 'clerks', label: 'Clerks', icon: UsersIcon, href: '/admin/clerks' },
+    { id: 'clerks', label: 'Clerks', icon: UsersIcon, href: '/clerk' },
     { id: 'members', label: 'Members', icon: UsersIcon, href: '/admin/members' },
+    { id: 'applicants', label: 'Applicants', icon: DocumentTextIcon, href: '/admin/applicants' },
+    { id: 'visitors-log', label: 'Visitors Log', icon: QrCodeIcon, href: '/admin/visitors-log' },
+    { id: 'plan', label: 'Plan', icon: CreditCardIcon, href: '/admin/plan' },
     { id: 'equipments', label: 'Equipments', icon: CogIcon, href: '/admin/equipments' },
     { id: 'attendance', label: 'Attendance', icon: CalendarIcon, href: '/admin/attendance' },
     { id: 'earnings', label: 'Earnings', icon: CurrencyDollarIcon, href: '/admin/earnings' },
@@ -45,10 +52,38 @@ export default function AdminNavbar({ adminName = "Admin" }) {
     { id: 'exercises', label: 'Manage Exercises', icon: WrenchScrewdriverIcon, href: '/admin/exercises' }
   ];
 
+  // Update active menu based on current pathname
+  useEffect(() => {
+    const currentPath = pathname;
+    
+    // Find the menu item that matches the current path
+    const matchingMenuItem = menuItems.find(item => {
+      // Handle exact matches and special cases
+      if (item.href === currentPath) return true;
+      
+      // Handle /clerk route for clerks menu
+      if (item.id === 'clerks' && currentPath === '/clerk') return true;
+      
+      // Handle dashboard route
+      if (item.id === 'dashboard' && currentPath === '/admin') return true;
+      
+      return false;
+    });
+    
+    if (matchingMenuItem) {
+      setActiveMenu(matchingMenuItem.id);
+    }
+  }, [pathname]);
+
   const handleMenuClick = (menuId) => {
     setActiveMenu(menuId);
     setIsSidebarOpen(false);
-    // You can add navigation logic here if needed
+    
+    // Find the menu item and navigate to its href
+    const menuItem = menuItems.find(item => item.id === menuId);
+    if (menuItem && menuItem.href) {
+      router.push(menuItem.href);
+    }
   };
 
   return (

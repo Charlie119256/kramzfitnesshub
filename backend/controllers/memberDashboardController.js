@@ -28,6 +28,7 @@ exports.getMembershipPlan = async (req, res) => {
       },
       include: [{
         model: MembershipType,
+        as: 'membershipType',
         attributes: ['name', 'description', 'duration_days', 'price']
       }],
       order: [['created_at', 'DESC']]
@@ -71,6 +72,7 @@ exports.getRemainingDays = async (req, res) => {
       },
       include: [{
         model: MembershipType,
+        as: 'membershipType',
         attributes: ['name', 'duration_days']
       }]
     });
@@ -198,6 +200,7 @@ exports.getAttendanceWithFilter = async (req, res) => {
         model: MemberMembership,
         include: [{
           model: MembershipType,
+          as: 'membershipType',
           attributes: ['name']
         }]
       }],
@@ -287,9 +290,35 @@ exports.getDashboardData = async (req, res) => {
       return res.status(403).json({ message: 'Access denied. Only members can access this feature.' });
     }
 
-    const member = await Member.findOne({ where: { user_id: req.user.user_id } });
+    let member = await Member.findOne({ where: { user_id: req.user.user_id } });
+    
     if (!member) {
-      return res.status(404).json({ message: 'Member profile not found.' });
+      // Try to find member by email as a fallback
+      const User = require('../models/User');
+      const user = await User.findByPk(req.user.user_id);
+      if (user && user.email) {
+        const memberByEmail = await Member.findOne({
+          include: [{
+            model: User,
+            where: { email: user.email },
+            attributes: []
+          }]
+        });
+        
+        if (memberByEmail) {
+          member = memberByEmail;
+        }
+      }
+    }
+    
+    if (!member) {
+      return res.status(404).json({ 
+        message: 'Member profile not found.',
+        debug: {
+          user_id: req.user.user_id,
+          user_exists: true
+        }
+      });
     }
 
     const today = new Date();
@@ -311,6 +340,7 @@ exports.getDashboardData = async (req, res) => {
         },
         include: [{
           model: MembershipType,
+          as: 'membershipType',
           attributes: ['name', 'description', 'duration_days', 'price']
         }]
       }),
@@ -370,6 +400,8 @@ exports.getDashboardData = async (req, res) => {
     return res.status(500).json({ message: 'Failed to fetch dashboard data.', error: error.message });
   }
 };
+
+
 
 // Get member's workout streak
 exports.getWorkoutStreak = async (req, res) => {

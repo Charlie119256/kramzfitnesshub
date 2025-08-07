@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { EnvelopeIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
+import ResponsiveAlert from '../../components/common/ResponsiveAlert';
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
@@ -124,15 +125,11 @@ export default function ForgotPassword() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {message && (
-              <div className={`p-3 rounded-md text-sm ${
-                message.includes('sent') || message.includes('success') 
-                  ? 'bg-green-50 text-green-700 border border-green-200' 
-                  : 'bg-red-50 text-red-700 border border-red-200'
-              }`} style={{ fontFamily: 'Poppins, sans-serif', fontSize: '14px' }}>
-                {message}
-              </div>
-            )}
+            <ResponsiveAlert
+              type={message.includes('sent') || message.includes('success') ? 'success' : 'error'}
+              message={message}
+              onClose={() => setMessage('')}
+            />
 
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2" style={{ fontFamily: 'Poppins, sans-serif', fontSize: '14px' }}>

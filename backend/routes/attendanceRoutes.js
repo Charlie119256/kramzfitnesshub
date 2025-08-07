@@ -13,5 +13,7 @@ router.post('/scan', authenticate, attendanceController.scan);
 router.get('/', authenticate, attendanceController.getMyAttendance);
 // Attendance log for today (admin/clerk)
 router.get('/today-log', authenticate, attendanceController.getTodayAttendance);
+// All attendance records (admin/clerk)
+router.get('/all', authenticate, attendanceController.getAllAttendance);
 
 module.exports = router; 

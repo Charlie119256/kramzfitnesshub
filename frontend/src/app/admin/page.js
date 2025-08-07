@@ -14,14 +14,26 @@ import {
   CheckCircleIcon,
   MegaphoneIcon,
   ClockIcon,
-  ArrowRightOnRectangleIcon
+  ArrowRightOnRectangleIcon,
+  PlusIcon,
+  XMarkIcon
 } from '@heroicons/react/24/outline';
+import ResponsiveAlert from '@/components/common/ResponsiveAlert';
+import LoadingSpinner from '@/components/common/LoadingSpinner';
 
 export default function AdminDashboard() {
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const [showAnnouncementModal, setShowAnnouncementModal] = useState(false);
+  const [announcementForm, setAnnouncementForm] = useState({
+    title: '',
+    message: '',
+    target_audience: 'all'
+  });
+  const [submittingAnnouncement, setSubmittingAnnouncement] = useState(false);
+  const [success, setSuccess] = useState('');
   const router = useRouter();
 
   useEffect(() => {
@@ -71,89 +83,91 @@ export default function AdminDashboard() {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
+      setError('');
       
-      // Static data for now
-      const staticData = {
-        totalEarnings: 125000,
-        totalMembersWithMembership: 45,
-        totalMemberAccounts: 52,
-        totalStaff: 8,
-        totalEquipment: 25,
-        expiringSoon: 3,
-        expiredMembers: 2,
-        membershipByGender: {
-          male: 28,
-          female: 17
-        },
-        recentAnnouncements: [
-          {
-            id: 1,
-            title: "New Equipment Arrival",
-            content: "We've added new treadmills and weight machines to enhance your workout experience.",
-            created_at: "2024-01-15T10:30:00Z",
-            is_important: true
-          },
-          {
-            id: 2,
-            title: "Holiday Schedule Update",
-            content: "The gym will have modified hours during the upcoming holidays. Check the schedule.",
-            created_at: "2024-01-14T14:20:00Z",
-            is_important: false
-          },
-          {
-            id: 3,
-            title: "Fitness Challenge Starting",
-            content: "Join our 30-day fitness challenge starting next week. Great prizes await!",
-            created_at: "2024-01-13T09:15:00Z",
-            is_important: true
-          }
-        ],
-        expiringMemberships: [
-          {
-            member_name: "John Smith",
-            membership_name: "Premium Plan",
-            daysLeft: 5,
-            expiry_date: "2024-01-20"
-          },
-          {
-            member_name: "Sarah Johnson",
-            membership_name: "Basic Plan",
-            daysLeft: 12,
-            expiry_date: "2024-01-27"
-          },
-          {
-            member_name: "Mike Davis",
-            membership_name: "Premium Plan",
-            daysLeft: 0,
-            expiry_date: "2024-01-15"
-          }
-        ],
-        monthlyEarnings: [
-          { month: 1, earnings: 85000 },
-          { month: 2, earnings: 92000 },
-          { month: 3, earnings: 88000 },
-          { month: 4, earnings: 95000 },
-          { month: 5, earnings: 102000 },
-          { month: 6, earnings: 98000 },
-          { month: 7, earnings: 105000 },
-          { month: 8, earnings: 112000 },
-          { month: 9, earnings: 108000 },
-          { month: 10, earnings: 115000 },
-          { month: 11, earnings: 120000 },
-          { month: 12, earnings: 125000 }
-        ]
-      };
-      
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      setDashboardData(staticData);
+      const token = localStorage.getItem('adminToken');
+      console.log('adminToken:', token); // Debug log
+      if (!token) {
+        setError('Session expired or not logged in. Please log in again.');
+        router.push('/login');
+        return;
+      }
+      // Use Next.js proxy (relative URL)
+      const response = await fetch('/api/admin-dashboard/dashboard-data', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        if (errorData.message === 'No token provided.') {
+          setError('Session expired or not logged in. Please log in again.');
+          router.push('/login');
+          return;
+        }
+        throw new Error(errorData.message || 'Failed to fetch dashboard data');
+      }
+
+      const data = await response.json();
+      setDashboardData(data);
     } catch (err) {
       setError(err.message);
       console.error('Error loading dashboard data:', err);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCreateAnnouncement = async (e) => {
+    e.preventDefault();
+    
+    if (!announcementForm.title.trim() || !announcementForm.message.trim()) {
+      setError('Please fill in all required fields');
+      return;
+    }
+
+    try {
+      setSubmittingAnnouncement(true);
+      setError('');
+      
+      const token = localStorage.getItem('adminToken');
+      // Use Next.js proxy (relative URL)
+      const response = await fetch('/api/announcements', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(announcementForm)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to create announcement');
+      }
+
+      const result = await response.json();
+      setSuccess('Announcement created successfully!');
+      setShowAnnouncementModal(false);
+      setAnnouncementForm({ title: '', message: '', target_audience: 'all' });
+      
+      // Refresh dashboard data to show new announcement
+      await fetchDashboardData();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSubmittingAnnouncement(false);
+    }
+  };
+
+  const handleAnnouncementInputChange = (e) => {
+    const { name, value } = e.target;
+    setAnnouncementForm(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
   // Show loading while checking authentication
@@ -171,10 +185,7 @@ export default function AdminDashboard() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading dashboard...</p>
-        </div>
+        <LoadingSpinner />
       </div>
     );
   }
@@ -308,8 +319,8 @@ export default function AdminDashboard() {
               </h3>
               <div className="flex items-end justify-between h-48 space-x-2">
                 {dashboardData.monthlyEarnings?.map((item, index) => {
-                  const maxEarnings = Math.max(...dashboardData.monthlyEarnings.map(item => item.earnings));
-                  const height = maxEarnings > 0 ? (item.earnings / maxEarnings) * 100 : 0;
+                  const maxEarnings = Math.max(...dashboardData.monthlyEarnings.map(item => item.total || 0));
+                  const height = maxEarnings > 0 ? ((item.total || 0) / maxEarnings) * 100 : 0;
                   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
                   
                   return (
@@ -321,10 +332,10 @@ export default function AdminDashboard() {
                         ></div>
                       </div>
                       <p className="text-xs text-gray-600 mt-2" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                        {months[index] || item.month}
+                        {months[item.month - 1] || item.month}
                       </p>
                       <p className="text-xs font-medium text-gray-900" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                        ₱{item.earnings?.toLocaleString() || 0}
+                        ₱{(item.total || 0)?.toLocaleString() || 0}
                       </p>
                     </div>
                   );
@@ -338,56 +349,54 @@ export default function AdminDashboard() {
                 Membership by Gender
               </h3>
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className="w-4 h-4 bg-blue-500 rounded-full mr-3"></div>
-                    <span className="text-sm font-medium text-gray-700" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                      Male
-                    </span>
+                {membershipByGender && membershipByGender.length > 0 ? (
+                  membershipByGender.map((item, index) => {
+                    const total = membershipByGender.reduce((sum, item) => sum + (item.count || 0), 0);
+                    const percentage = total > 0 ? Math.round(((item.count || 0) / total) * 100) : 0;
+                    const color = item.gender === 'male' ? 'blue' : 'pink';
+                    
+                    return (
+                      <div key={index}>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center">
+                            <div className={`w-4 h-4 bg-${color}-500 rounded-full mr-3`}></div>
+                            <span className="text-sm font-medium text-gray-700 capitalize" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                              {item.gender}
+                            </span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <span className="text-sm font-semibold text-gray-900" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                              {item.count || 0}
+                            </span>
+                            <span className="text-sm text-gray-500" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                              ({percentage}%)
+                            </span>
+                          </div>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div 
+                            className={`bg-${color}-500 h-2 rounded-full transition-all duration-300`}
+                            style={{ width: `${percentage}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="text-center py-8">
+                    <UsersIcon className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                    <p className="text-gray-500" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                      No membership data available
+                    </p>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-sm font-semibold text-gray-900" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                      {membershipByGender?.male || 0}
-                    </span>
-                    <span className="text-sm text-gray-500" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                      ({membershipByGender ? Math.round((membershipByGender.male / (membershipByGender.male + membershipByGender.female)) * 100) : 0}%)
-                    </span>
-                  </div>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div 
-                    className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${membershipByGender ? (membershipByGender.male / (membershipByGender.male + membershipByGender.female)) * 100 : 0}%` }}
-                  ></div>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className="w-4 h-4 bg-pink-500 rounded-full mr-3"></div>
-                    <span className="text-sm font-medium text-gray-700" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                      Female
-                    </span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-sm font-semibold text-gray-900" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                      {membershipByGender?.female || 0}
-                    </span>
-                    <span className="text-sm text-gray-500" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                      ({membershipByGender ? Math.round((membershipByGender.female / (membershipByGender.male + membershipByGender.female)) * 100) : 0}%)
-                    </span>
-                  </div>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div 
-                    className="bg-pink-500 h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${membershipByGender ? (membershipByGender.female / (membershipByGender.male + membershipByGender.female)) * 100 : 0}%` }}
-                  ></div>
-                </div>
+                )}
 
                 <div className="pt-4 border-t border-gray-200">
                   <div className="flex justify-between text-sm text-gray-600" style={{ fontFamily: 'Poppins, sans-serif' }}>
                     <span>Total Members</span>
-                    <span className="font-semibold">{membershipByGender ? membershipByGender.male + membershipByGender.female : 0}</span>
+                    <span className="font-semibold">
+                      {membershipByGender ? membershipByGender.reduce((sum, item) => sum + (item.count || 0), 0) : 0}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -402,31 +411,16 @@ export default function AdminDashboard() {
                 Expiring Memberships
               </h3>
               <div className="space-y-4">
-                {dashboardData.expiringMemberships?.length > 0 ? (
-                  dashboardData.expiringMemberships.slice(0, 5).map((member, index) => (
-                    <div key={index} className={`flex items-center justify-between p-3 rounded-lg ${
-                      member.daysLeft <= 0 ? 'bg-red-50' : 'bg-orange-50'
-                    }`}>
-                      <div>
-                        <p className="text-sm font-medium text-gray-900" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                          {member.member_name}
-                        </p>
-                        <p className="text-xs text-gray-500" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                          {member.membership_name}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className={`text-sm font-semibold ${
-                          member.daysLeft <= 0 ? 'text-red-600' : 'text-orange-600'
-                        }`} style={{ fontFamily: 'Poppins, sans-serif' }}>
-                          {member.daysLeft <= 0 ? 'Expired' : `${member.daysLeft} days left`}
-                        </p>
-                        <p className="text-xs text-gray-500" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                          {member.daysLeft <= 0 ? 'Expired: ' : 'Expires: '}{member.expiry_date}
-                        </p>
-                      </div>
-                    </div>
-                  ))
+                {expiringSoon > 0 ? (
+                  <div className="text-center py-4">
+                    <ExclamationTriangleIcon className="h-8 w-8 text-orange-500 mx-auto mb-2" />
+                    <p className="text-sm font-medium text-gray-900" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                      {expiringSoon} memberships expiring soon
+                    </p>
+                    <p className="text-xs text-gray-500" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                      Check the Members page for details
+                    </p>
+                  </div>
                 ) : (
                   <div className="text-center py-8">
                     <ClockIcon className="h-12 w-12 text-gray-300 mx-auto mb-3" />
@@ -444,7 +438,16 @@ export default function AdminDashboard() {
                 <h3 className="text-lg font-semibold text-gray-900" style={{ fontFamily: 'Poppins, sans-serif' }}>
                   Recent Announcements
                 </h3>
-                <MegaphoneIcon className="h-5 w-5 text-blue-500" />
+                <div className="flex items-center space-x-2">
+                  <MegaphoneIcon className="h-5 w-5 text-blue-500" />
+                  <button
+                    onClick={() => setShowAnnouncementModal(true)}
+                    className="flex items-center px-3 py-1 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    <PlusIcon className="h-4 w-4 mr-1" />
+                    New
+                  </button>
+                </div>
               </div>
               <div className="space-y-4">
                 {recentAnnouncements?.length > 0 ? (
@@ -456,24 +459,24 @@ export default function AdminDashboard() {
                             {announcement.title}
                           </h4>
                           <p className="text-sm text-gray-600 mb-2" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                            {announcement.content}
+                            {announcement.message}
                           </p>
-                          <div className="flex items-center text-xs text-gray-500" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                            <CalendarIcon className="h-3 w-3 mr-1" />
-                            {new Date(announcement.created_at).toLocaleDateString('en-US', {
-                              year: 'numeric',
-                              month: 'short',
-                              day: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center text-xs text-gray-500" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                              <CalendarIcon className="h-3 w-3 mr-1" />
+                              {new Date(announcement.created_at).toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </div>
+                            <span className="text-xs text-gray-500 capitalize" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                              {announcement.target_audience}
+                            </span>
                           </div>
                         </div>
-                        {announcement.is_important && (
-                          <span className="ml-2 px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                            Important
-                          </span>
-                        )}
                       </div>
                     </div>
                   ))
@@ -527,6 +530,105 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
+
+      {/* Announcement Modal */}
+      {showAnnouncementModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                Create Announcement
+              </h3>
+              <button
+                onClick={() => setShowAnnouncementModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
+            
+            <form onSubmit={handleCreateAnnouncement}>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                    Title *
+                  </label>
+                  <input
+                    type="text"
+                    name="title"
+                    value={announcementForm.title}
+                    onChange={handleAnnouncementInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter announcement title"
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                    Message *
+                  </label>
+                  <textarea
+                    name="message"
+                    value={announcementForm.message}
+                    onChange={handleAnnouncementInputChange}
+                    rows={4}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter announcement message"
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                    Target Audience *
+                  </label>
+                  <select
+                    name="target_audience"
+                    value={announcementForm.target_audience}
+                    onChange={handleAnnouncementInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  >
+                    <option value="all">All Users</option>
+                    <option value="members">Members Only</option>
+                    <option value="clerks">Clerks Only</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div className="flex justify-end space-x-3 mt-6">
+                <button
+                  type="button"
+                  onClick={() => setShowAnnouncementModal(false)}
+                  className="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingAnnouncement}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {submittingAnnouncement ? 'Creating...' : 'Create Announcement'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Responsive Alert */}
+      <ResponsiveAlert
+        show={!!error || !!success}
+        type={error ? 'error' : 'success'}
+        message={error || success}
+        onClose={() => {
+          setError('');
+          setSuccess('');
+        }}
+        fullScreen={false}
+      />
     </div>
   );
 } 

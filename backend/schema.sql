@@ -15,6 +15,9 @@ CREATE TABLE users (
     verification_token_expires DATETIME,
     reset_token VARCHAR(255),
     reset_token_expires DATETIME,
+    email_change_token VARCHAR(255),
+    email_change_token_expires DATETIME,
+    new_email VARCHAR(255),
     status ENUM('active', 'inactive', 'banned') DEFAULT 'active',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -106,7 +109,7 @@ CREATE TABLE payments (
     membership_id INT NOT NULL,
     amount DECIMAL(10,2) NOT NULL,
     payment_date DATETIME NOT NULL,
-    payment_method ENUM('cash', 'gcash') NOT NULL,
+    payment_method VARCHAR(50) NOT NULL DEFAULT 'cash',
     reference_number VARCHAR(100),
     FOREIGN KEY (member_id) REFERENCES members(member_id),
     FOREIGN KEY (membership_id) REFERENCES membership_types(membership_id)
@@ -118,11 +121,27 @@ CREATE TABLE receipts (
     member_membership_id INT NOT NULL,
     issued_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     amount DECIMAL(10,2) NOT NULL,
-    payment_method ENUM('cash', 'gcash') NOT NULL,
+    payment_method VARCHAR(50) NOT NULL DEFAULT 'cash',
     reference_number VARCHAR(100),
     receipt_url VARCHAR(255),
     details TEXT,
     FOREIGN KEY (member_membership_id) REFERENCES member_memberships(member_membership_id)
+);
+
+-- COMPENSATIONS TABLE
+CREATE TABLE compensations (
+    compensation_id INT AUTO_INCREMENT PRIMARY KEY,
+    member_membership_id INT NOT NULL,
+    compensation_days INT NOT NULL DEFAULT 0,
+    reason VARCHAR(255) NOT NULL,
+    compensation_date DATE NOT NULL,
+    applied_by INT NOT NULL,
+    status ENUM('pending', 'applied', 'expired') DEFAULT 'pending',
+    notes TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (member_membership_id) REFERENCES member_memberships(member_membership_id),
+    FOREIGN KEY (applied_by) REFERENCES users(user_id)
 );
 
 -- ATTENDANCE TABLE

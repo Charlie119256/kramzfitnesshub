@@ -56,6 +56,10 @@ const Member = sequelize.define('Member', {
   qr_code_path: {
     type: DataTypes.STRING,
   },
+  profile_picture: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
   created_at: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW,

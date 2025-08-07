@@ -51,7 +51,26 @@ exports.listPlanApplications = async (req, res) => {
     }
     const status = req.query.status; // optional filter
     const where = status ? { status } : {};
-    const applications = await PlanApplication.findAll({ where });
+    const applications = await PlanApplication.findAll({ 
+      where,
+      include: [
+        {
+          model: Member,
+          as: 'member',
+          include: [
+            {
+              model: User,
+              as: 'user'
+            }
+          ]
+        },
+        {
+          model: MembershipType,
+          as: 'membership_type'
+        }
+      ],
+      order: [['created_at', 'DESC']]
+    });
     return res.status(200).json(applications);
   } catch (error) {
     return res.status(500).json({ message: 'Failed to fetch applications.', error: error.message });

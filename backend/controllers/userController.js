@@ -484,7 +484,7 @@ exports.editMemberProfile = async (req, res) => {
     const { member_id } = req.params;
     const updateFields = req.body;
 
-    // Only allow certain fields to be updated
+    // Only allow certain fields to be updated (excluding email)
     const allowedFields = [
       'first_name', 'middle_name', 'last_name', 'suffix',
       'dob', 'gender', 'contact_number', 'barangay', 'municipality', 'city'
@@ -495,9 +495,7 @@ exports.editMemberProfile = async (req, res) => {
         updateData[key] = updateFields[key];
       }
     }
-    if (Object.keys(updateData).length === 0) {
-      return res.status(400).json({ message: 'No valid fields to update.' });
-    }
+
     const member = await Member.findByPk(member_id);
     if (!member) return res.status(404).json({ message: 'Member not found.' });
 
@@ -505,7 +503,63 @@ exports.editMemberProfile = async (req, res) => {
     if (req.user.role !== 'admin' && req.user.user_id !== member.user_id) {
       return res.status(403).json({ message: 'You are not allowed to edit this profile.' });
     }
-    await member.update(updateData);
+
+    // Update member data
+    if (Object.keys(updateData).length > 0) {
+      await member.update(updateData);
+    }
+
+    // Handle email update with verification
+    if (updateFields.email !== undefined) {
+      // Check if email is already taken by another user
+      const existingUser = await User.findOne({ 
+        where: { 
+          email: updateFields.email,
+          user_id: { [require('sequelize').Op.ne]: member.user_id }
+        }
+      });
+      
+      if (existingUser) {
+        return res.status(409).json({ error: 'Email is already taken by another user' });
+      }
+
+      // Get current user
+      const currentUser = await User.findByPk(member.user_id);
+      
+      // Generate email change verification token
+      const emailChangeToken = Math.random().toString(36).substring(2, 15);
+      const emailChangeTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+      
+      // Store the new email and verification token in the user record
+      await User.update(
+        { 
+          email_change_token: emailChangeToken,
+          email_change_token_expires: emailChangeTokenExpires,
+          new_email: updateFields.email
+        },
+        { where: { user_id: member.user_id } }
+      );
+
+      // Send verification email to the new email address
+      const verifyUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify-email-change?token=${emailChangeToken}&email=${encodeURIComponent(updateFields.email)}`;
+      
+      await sendEmail(
+        updateFields.email,
+        'Verify Your Email Change - Kramz Fitness Hub',
+        `<p>You have requested to change your email address to: ${updateFields.email}</p>
+         <p>Please click the link below to verify this email address:</p>
+         <p><a href="${verifyUrl}">Verify Email Change</a></p>
+         <p>This link will expire in 24 hours.</p>
+         <p>If you did not request this change, please ignore this email.</p>`
+      );
+
+      return res.status(200).json({ 
+        message: 'Profile updated successfully. A verification email has been sent to your new email address. Please check your inbox and click the verification link to complete the email change.',
+        member 
+      });
+    }
+
+    // If no email was provided or email is undefined, return success for member data update
     return res.status(200).json({ message: 'Profile updated successfully.', member });
   } catch (error) {
     return res.status(500).json({ message: 'Failed to update profile.', error: error.message });
@@ -528,5 +582,80 @@ exports.getMyMemberships = async (req, res) => {
     return res.status(200).json(memberships);
   } catch (error) {
     return res.status(500).json({ message: 'Failed to fetch memberships.', error: error.message });
+  }
+};
+
+exports.verifyEmailChange = async (req, res) => {
+  try {
+    const { token, email } = req.query;
+    
+    if (!token || !email) {
+      return res.status(400).json({ message: 'Token and email are required.' });
+    }
+
+    // Find user with the email change token
+    const user = await User.findOne({ 
+      where: { 
+        email_change_token: token,
+        new_email: email
+      }
+    });
+
+    if (!user) {
+      return res.status(400).json({ message: 'Invalid or expired verification link.' });
+    }
+
+    // Check if token has expired
+    if (user.email_change_token_expires) {
+      const currentTime = new Date();
+      const expirationTime = new Date(user.email_change_token_expires);
+      
+      if (currentTime > expirationTime) {
+        return res.status(400).json({ message: 'Verification link has expired. Please request a new email change.' });
+      }
+    }
+
+    // Check if the new email is still available
+    const existingUser = await User.findOne({ 
+      where: { 
+        email: email,
+        user_id: { [require('sequelize').Op.ne]: user.user_id }
+      }
+    });
+    
+    if (existingUser) {
+      return res.status(409).json({ message: 'Email is already taken by another user. Please choose a different email.' });
+    }
+
+    // Update the email
+    user.email = email;
+    user.email_change_token = null;
+    user.email_change_token_expires = null;
+    user.new_email = null;
+    await user.save();
+
+    // Verify that the user still exists and has the correct data
+    const updatedUser = await User.findByPk(user.user_id);
+
+    // Check if member profile exists for this user
+    const Member = require('../models/Member');
+    const member = await Member.findOne({ where: { user_id: user.user_id } });
+
+    // Generate JWT token for automatic login
+    const jwtToken = jwt.sign(
+      { user_id: user.user_id, email: user.email, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: '1d' }
+    );
+
+    return res.status(200).json({ 
+      message: 'Email changed successfully. You can now access your dashboard with your new email.',
+      token: jwtToken,
+      user: { user_id: user.user_id, email: user.email, role: user.role }
+    });
+
+  } catch (error) {
+    console.error('Error in verifyEmailChange:', error);
+    return res.status(500).json({ message: 'Email change verification failed.', error: error.message });
   }
 }; 

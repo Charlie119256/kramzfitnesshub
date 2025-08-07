@@ -1,250 +1,42 @@
 # Admin Dashboard API Documentation
 
 ## Overview
-The Admin Dashboard API provides comprehensive analytics and management features for the Kramz Fitness Hub system. All endpoints require admin authentication.
 
-## Base URL
+The Admin Dashboard API provides dynamic data for the admin dashboard, including real-time statistics, analytics, and announcement management. The dashboard is no longer static and fetches live data from the database.
+
+## Features
+
+### Dynamic Data
+- **Real-time Statistics**: Total earnings, active members, staff count, equipment count
+- **Analytics**: Monthly earnings chart, membership by gender distribution
+- **Alerts**: Expiring memberships, expired members count
+- **Announcements**: Recent announcements with creation functionality
+
+### Announcement System
+- **Create Announcements**: Admin can create announcements for different target audiences
+- **Target Audiences**: All users, members only, clerks only
+- **Email Notifications**: Automatic email sending to target audience
+- **Real-time Updates**: Dashboard refreshes after creating announcements
+
+## API Endpoints
+
+### 1. Get Dashboard Data
+**GET** `/api/admin-dashboard/dashboard-data`
+
+Returns comprehensive dashboard data including all statistics and analytics.
+
+**Headers:**
 ```
-/api/admin-dashboard
+Authorization: Bearer <admin_token>
+Content-Type: application/json
 ```
-
-## Authentication
-All endpoints require a valid JWT token in the Authorization header:
-```
-Authorization: Bearer <your-jwt-token>
-```
-
-## Endpoints
-
-### 1. Get Total Earnings
-**GET** `/earnings`
-
-Returns total earnings from membership payments and monthly breakdown.
 
 **Response:**
 ```json
 {
-  "totalEarnings": 50000.00,
-  "monthlyEarnings": [
-    {
-      "month": 1,
-      "total": 8500.00
-    },
-    {
-      "month": 2,
-      "total": 9200.00
-    }
-  ]
-}
-```
-
-### 2. Get Total Members with Membership
-**GET** `/members-with-membership`
-
-Returns count of members with active memberships.
-
-**Response:**
-```json
-{
-  "totalMembersWithMembership": 45
-}
-```
-
-### 3. Get Total Member Accounts
-**GET** `/member-accounts`
-
-Returns total member accounts with active/inactive breakdown.
-
-**Response:**
-```json
-{
-  "totalMemberAccounts": 50,
-  "activeMemberAccounts": 45,
-  "inactiveMemberAccounts": 5
-}
-```
-
-### 4. Get Total Staff
-**GET** `/staff`
-
-Returns total staff count including admins and clerks.
-
-**Response:**
-```json
-{
-  "totalStaff": 8,
-  "totalClerks": 6,
-  "totalAdmins": 2
-}
-```
-
-### 5. Get Total Equipment
-**GET** `/equipment`
-
-Returns equipment statistics with status breakdown.
-
-**Response:**
-```json
-{
-  "totalEquipment": 25,
-  "availableEquipment": 20,
-  "maintenanceEquipment": 3,
-  "unavailableEquipment": 2
-}
-```
-
-### 6. Get Expiring Soon Memberships
-**GET** `/expiring-soon`
-
-Returns memberships expiring within 30 days.
-
-**Response:**
-```json
-{
-  "expiringSoon": [
-    {
-      "member_membership_id": 1,
-      "member_id": 1,
-      "membership_id": 1,
-      "start_date": "2024-01-01",
-      "end_date": "2024-02-15",
-      "plan_status": "active",
-      "member": {
-        "member_id": 1,
-        "first_name": "John",
-        "last_name": "Doe",
-        "user": {
-          "email": "john@example.com"
-        }
-      },
-      "membershipType": {
-        "name": "Premium Monthly",
-        "duration_days": 30
-      }
-    }
-  ],
-  "count": 1
-}
-```
-
-### 7. Get Expired Members
-**GET** `/expired-members`
-
-Returns memberships that have already expired.
-
-**Response:**
-```json
-{
-  "expiredMembers": [
-    {
-      "member_membership_id": 2,
-      "member_id": 2,
-      "membership_id": 1,
-      "start_date": "2023-12-01",
-      "end_date": "2024-01-01",
-      "plan_status": "active",
-      "member": {
-        "member_id": 2,
-        "first_name": "Jane",
-        "last_name": "Smith",
-        "user": {
-          "email": "jane@example.com"
-        }
-      },
-      "membershipType": {
-        "name": "Premium Monthly",
-        "duration_days": 30
-      }
-    }
-  ],
-  "count": 1
-}
-```
-
-### 8. Get Earnings and Expenses Report
-**GET** `/earnings-expenses-report`
-
-Returns detailed earnings and expenses report with optional date filtering.
-
-**Query Parameters:**
-- `startDate` (optional): Start date for filtering (YYYY-MM-DD)
-- `endDate` (optional): End date for filtering (YYYY-MM-DD)
-
-**Response:**
-```json
-{
-  "earnings": [
-    {
-      "date": "2024-01-15",
-      "total": 2500.00
-    }
-  ],
-  "expenses": [
-    {
-      "date": "2024-01-10",
-      "total": 1500.00
-    }
-  ],
-  "totalEarnings": 50000.00,
-  "totalExpenses": 15000.00,
-  "netProfit": 35000.00
-}
-```
-
-### 9. Get Membership by Gender
-**GET** `/membership-by-gender`
-
-Returns membership distribution by gender.
-
-**Response:**
-```json
-{
-  "membershipByGender": [
-    {
-      "gender": "male",
-      "count": 25
-    },
-    {
-      "gender": "female",
-      "count": 20
-    }
-  ],
-  "totalActiveMemberships": 45
-}
-```
-
-### 10. Get Announcements
-**GET** `/announcements`
-
-Returns latest announcements for the dashboard.
-
-**Response:**
-```json
-{
-  "announcements": [
-    {
-      "announcement_id": 1,
-      "title": "New Equipment Arrival",
-      "message": "New treadmills have been installed.",
-      "target_audience": "all",
-      "created_at": "2024-01-15T10:00:00Z"
-    }
-  ],
-  "count": 1
-}
-```
-
-### 11. Get Comprehensive Dashboard Data
-**GET** `/dashboard-data`
-
-Returns all dashboard metrics in a single request for optimal performance.
-
-**Response:**
-```json
-{
-  "totalEarnings": 50000.00,
+  "totalEarnings": 125000,
   "totalMembersWithMembership": 45,
-  "totalMemberAccounts": 50,
+  "totalMemberAccounts": 52,
   "totalStaff": 8,
   "totalEquipment": 25,
   "expiringSoon": 3,
@@ -252,25 +44,115 @@ Returns all dashboard metrics in a single request for optimal performance.
   "membershipByGender": [
     {
       "gender": "male",
-      "count": 25
+      "count": 28
     },
     {
-      "gender": "female",
-      "count": 20
+      "gender": "female", 
+      "count": 17
     }
   ],
   "recentAnnouncements": [
     {
       "announcement_id": 1,
       "title": "New Equipment Arrival",
-      "message": "New treadmills have been installed.",
-      "created_at": "2024-01-15T10:00:00Z"
+      "message": "We've added new treadmills and weight machines...",
+      "target_audience": "all",
+      "created_at": "2024-01-15T10:30:00Z"
+    }
+  ],
+  "monthlyEarnings": [
+    {
+      "month": 1,
+      "total": 85000
     }
   ]
 }
 ```
 
+### 2. Create Announcement
+**POST** `/api/announcements`
+
+Creates a new announcement and sends emails to target audience.
+
+**Headers:**
+```
+Authorization: Bearer <admin_token>
+Content-Type: application/json
+```
+
+**Request Body:**
+```json
+{
+  "title": "New Equipment Arrival",
+  "message": "We've added new treadmills and weight machines to enhance your workout experience.",
+  "target_audience": "all"
+}
+```
+
+**Response:**
+```json
+{
+  "message": "Announcement created and emails sent.",
+  "announcement": {
+    "announcement_id": 1,
+    "title": "New Equipment Arrival",
+    "message": "We've added new treadmills...",
+    "target_audience": "all",
+    "created_by": 1,
+    "created_at": "2024-01-15T10:30:00Z"
+  }
+}
+```
+
+## Database Schema
+
+### Announcements Table
+```sql
+CREATE TABLE announcements (
+    announcement_id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    target_audience ENUM('all', 'members', 'clerks') NOT NULL,
+    created_by INT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (created_by) REFERENCES users(user_id)
+);
+```
+
+## Frontend Integration
+
+### Dashboard Component
+The admin dashboard (`frontend/src/app/admin/page.js`) has been updated to:
+
+1. **Fetch Real Data**: Uses API calls instead of static data
+2. **Dynamic Charts**: Monthly earnings and gender distribution charts
+3. **Announcement Modal**: Create new announcements with form validation
+4. **Responsive Alerts**: Success/error messages using ResponsiveAlert component
+5. **Loading States**: Proper loading indicators during data fetching
+
+### Key Features
+- **Authentication Check**: Verifies admin role before loading data
+- **Error Handling**: Comprehensive error handling with retry functionality
+- **Real-time Updates**: Dashboard refreshes after creating announcements
+- **Form Validation**: Client-side validation for announcement creation
+- **Responsive Design**: Mobile-friendly interface
+
+## Authentication
+
+All dashboard endpoints require admin authentication:
+- Valid JWT token in Authorization header
+- User must have 'admin' role
+- Token must not be expired
+
 ## Error Responses
+
+### 401 Unauthorized
+```json
+{
+  "message": "Invalid or expired token."
+}
+```
 
 ### 403 Forbidden
 ```json
@@ -283,70 +165,126 @@ Returns all dashboard metrics in a single request for optimal performance.
 ```json
 {
   "message": "Failed to fetch dashboard data.",
-  "error": "Error details"
+  "error": "Database connection error"
 }
 ```
 
 ## Usage Examples
 
-### Frontend Integration Example (JavaScript)
+### Frontend Dashboard Data Fetching
 ```javascript
-// Get comprehensive dashboard data
-const getDashboardData = async () => {
+const fetchDashboardData = async () => {
   try {
+    const token = localStorage.getItem('adminToken');
     const response = await fetch('/api/admin-dashboard/dashboard-data', {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       }
     });
-    
-    if (response.ok) {
-      const data = await response.json();
-      // Update dashboard UI with data
-      updateDashboard(data);
-    }
-  } catch (error) {
-    console.error('Error fetching dashboard data:', error);
-  }
-};
 
-// Get earnings with date filtering
-const getEarningsReport = async (startDate, endDate) => {
-  try {
-    const params = new URLSearchParams();
-    if (startDate) params.append('startDate', startDate);
-    if (endDate) params.append('endDate', endDate);
-    
-    const response = await fetch(`/api/admin-dashboard/earnings-expenses-report?${params}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
-    
-    if (response.ok) {
-      const data = await response.json();
-      // Update earnings chart
-      updateEarningsChart(data);
+    if (!response.ok) {
+      throw new Error('Failed to fetch dashboard data');
     }
+
+    const data = await response.json();
+    setDashboardData(data);
   } catch (error) {
-    console.error('Error fetching earnings report:', error);
+    setError(error.message);
   }
 };
 ```
 
-## Performance Notes
+### Creating Announcements
+```javascript
+const handleCreateAnnouncement = async (formData) => {
+  try {
+    const token = localStorage.getItem('adminToken');
+    const response = await fetch('/api/announcements', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(formData)
+    });
 
-1. **Use `/dashboard-data` endpoint** for initial dashboard load to get all metrics in one request
-2. **Use individual endpoints** for specific data updates or filtering
-3. **Implement caching** on the frontend for better performance
-4. **Use date filtering** for large datasets in earnings/expenses reports
+    if (!response.ok) {
+      throw new Error('Failed to create announcement');
+    }
 
-## Security Considerations
+    const result = await response.json();
+    setSuccess('Announcement created successfully!');
+    
+    // Refresh dashboard data
+    await fetchDashboardData();
+  } catch (error) {
+    setError(error.message);
+  }
+};
+```
 
-1. All endpoints require admin authentication
-2. JWT tokens should be stored securely
-3. Implement rate limiting for production use
-4. Validate all input parameters
-5. Log admin actions for audit purposes 
+## Performance Considerations
+
+1. **Parallel Data Fetching**: Dashboard uses Promise.all for concurrent API calls
+2. **Caching**: Consider implementing Redis for frequently accessed data
+3. **Pagination**: For large datasets, implement pagination
+4. **Real-time Updates**: Consider WebSocket integration for live updates
+
+## Security Features
+
+1. **Role-based Access**: Only admin users can access dashboard data
+2. **Token Validation**: JWT tokens are validated on every request
+3. **Input Validation**: Server-side validation for announcement creation
+4. **SQL Injection Protection**: Using Sequelize ORM with parameterized queries
+
+## Monitoring and Logging
+
+1. **API Logging**: Log all dashboard API calls
+2. **Error Tracking**: Monitor failed requests and database errors
+3. **Performance Metrics**: Track response times and database query performance
+4. **User Activity**: Monitor admin dashboard usage patterns
+
+## Future Enhancements
+
+1. **Real-time Notifications**: WebSocket integration for live updates
+2. **Advanced Analytics**: More detailed charts and reports
+3. **Export Functionality**: PDF/Excel export of dashboard data
+4. **Customizable Dashboard**: Allow admins to customize dashboard layout
+5. **Scheduled Announcements**: Future-dated announcements
+6. **Announcement Templates**: Pre-defined announcement templates
+7. **Multi-language Support**: Internationalization for announcements
+8. **Dashboard Widgets**: Configurable dashboard widgets
+
+## Troubleshooting
+
+### Common Issues
+
+1. **401 Unauthorized**: Check if admin token is valid and not expired
+2. **403 Forbidden**: Verify user has admin role
+3. **Empty Dashboard**: Check if database has data
+4. **Announcement Creation Failed**: Verify email service is configured
+
+### Debug Steps
+
+1. Check browser console for JavaScript errors
+2. Verify API endpoints are accessible
+3. Check database connections
+4. Validate JWT token format
+5. Test email service configuration
+
+## Dependencies
+
+### Backend
+- Express.js
+- Sequelize ORM
+- JWT for authentication
+- Nodemailer for email sending
+
+### Frontend
+- Next.js
+- React hooks
+- Heroicons
+- Tailwind CSS
+- ResponsiveAlert component
+- LoadingSpinner component 

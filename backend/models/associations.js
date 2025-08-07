@@ -15,6 +15,7 @@ const WorkoutCategory = require('./WorkoutCategory');
 const WeekPlan = require('./WeekPlan');
 const Exercise = require('./Exercise');
 const PlanApplication = require('./PlanApplication');
+const Compensation = require('./Compensation');
 
 // User associations
 User.hasOne(Member, { foreignKey: 'user_id', as: 'member' });
@@ -49,7 +50,7 @@ EquipmentCategory.hasMany(Equipment, { foreignKey: 'category_id', as: 'equipment
 
 // Attendance associations
 Attendance.belongsTo(Member, { foreignKey: 'member_id', as: 'member' });
-Attendance.belongsTo(MemberMembership, { foreignKey: 'membership_id', as: 'membership' });
+Attendance.belongsTo(MembershipType, { foreignKey: 'membership_id', as: 'membership_type' });
 
 // Announcement associations
 Announcement.belongsTo(User, { foreignKey: 'created_by', as: 'creator' });
@@ -72,7 +73,12 @@ Exercise.belongsTo(Workout, { foreignKey: 'workout_id', as: 'workout' });
 
 // PlanApplication associations
 PlanApplication.belongsTo(Member, { foreignKey: 'member_id', as: 'member' });
-PlanApplication.belongsTo(MembershipType, { foreignKey: 'membership_id', as: 'membershipType' });
+PlanApplication.belongsTo(MembershipType, { foreignKey: 'membership_id', as: 'membership_type' });
+
+// Compensation associations
+Compensation.belongsTo(MemberMembership, { foreignKey: 'member_membership_id', as: 'memberMembership' });
+Compensation.belongsTo(User, { foreignKey: 'applied_by', as: 'appliedBy' });
+MemberMembership.hasMany(Compensation, { foreignKey: 'member_membership_id', as: 'compensations' });
 
 module.exports = {
   User,
@@ -91,5 +97,6 @@ module.exports = {
   WorkoutCategory,
   WeekPlan,
   Exercise,
-  PlanApplication
+  PlanApplication,
+  Compensation
 }; 

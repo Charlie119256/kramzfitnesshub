@@ -36,6 +36,15 @@ const User = sequelize.define('User', {
   reset_token_expires: {
     type: DataTypes.DATE,
   },
+  email_change_token: {
+    type: DataTypes.STRING,
+  },
+  email_change_token_expires: {
+    type: DataTypes.DATE,
+  },
+  new_email: {
+    type: DataTypes.STRING,
+  },
   status: {
     type: DataTypes.ENUM('active', 'inactive', 'banned'),
     defaultValue: 'active',

@@ -1,7 +1,9 @@
 const Member = require('../models/Member');
+const User = require('../models/User');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const { sendEmail } = require('../utils/email');
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -77,6 +79,12 @@ const uploadProfilePicture = async (req, res) => {
       mimetype: req.file.mimetype
     });
 
+    // Delete old profile picture if it exists
+    if (member.profile_picture && fs.existsSync(member.profile_picture)) {
+      console.log('Upload - Deleting old profile picture:', member.profile_picture);
+      fs.unlinkSync(member.profile_picture);
+    }
+
     // Update member's profile picture path in database
     const profilePicturePath = req.file.path;
     
@@ -112,7 +120,7 @@ const getMemberProfile = async (req, res) => {
     const { memberId } = req.params;
     
     const member = await Member.findByPk(memberId, {
-      attributes: ['member_id', 'first_name', 'last_name', 'email', 'phone', 'profile_picture', 'created_at']
+      attributes: ['member_id', 'first_name', 'middle_name', 'last_name', 'suffix', 'dob', 'gender', 'contact_number', 'barangay', 'municipality', 'city', 'profile_picture', 'created_at']
     });
 
     if (!member) {
@@ -131,17 +139,101 @@ const getMemberProfile = async (req, res) => {
 const updateMemberProfile = async (req, res) => {
   try {
     const { memberId } = req.params;
-    const { first_name, last_name, phone } = req.body;
+    const { 
+      first_name, 
+      last_name, 
+      middle_name, 
+      suffix, 
+      contact_number, 
+      barangay, 
+      municipality, 
+      city,
+      email
+    } = req.body;
     
-    const [result] = await Member.update(
-      { first_name, last_name, phone },
-      { where: { member_id: memberId } }
-    );
-
-    if (result === 0) {
+    // Find the member first to get the user_id
+    const member = await Member.findByPk(memberId);
+    if (!member) {
       return res.status(404).json({ error: 'Member not found' });
     }
 
+    // Prepare member update data (excluding email)
+    const memberUpdateData = {
+      first_name,
+      last_name,
+      middle_name,
+      suffix,
+      contact_number,
+      barangay,
+      municipality,
+      city
+    };
+
+    // Remove undefined values from member data
+    Object.keys(memberUpdateData).forEach(key => {
+      if (memberUpdateData[key] === undefined) {
+        delete memberUpdateData[key];
+      }
+    });
+
+    // Update member data
+    await Member.update(
+      memberUpdateData,
+      { where: { member_id: memberId } }
+    );
+
+    // Handle email update with verification
+    if (email !== undefined) {
+      const User = require('../models/User');
+      
+      // Check if email is already taken by another user
+      const existingUser = await User.findOne({ 
+        where: { 
+          email: email,
+          user_id: { [require('sequelize').Op.ne]: member.user_id }
+        }
+      });
+      
+      if (existingUser) {
+        return res.status(409).json({ error: 'Email is already taken by another user' });
+      }
+
+      // Get current user
+      const currentUser = await User.findByPk(member.user_id);
+      
+      // Generate email change verification token
+      const emailChangeToken = Math.random().toString(36).substring(2, 15);
+      const emailChangeTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+      
+      // Store the new email and verification token in the user record
+      await User.update(
+        { 
+          email_change_token: emailChangeToken,
+          email_change_token_expires: emailChangeTokenExpires,
+          new_email: email
+        },
+        { where: { user_id: member.user_id } }
+      );
+
+      // Send verification email to the new email address
+      const verifyUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify-email-change?token=${emailChangeToken}&email=${encodeURIComponent(email)}`;
+      
+      await sendEmail(
+        email,
+        'Verify Your Email Change - Kramz Fitness Hub',
+        `<p>You have requested to change your email address to: ${email}</p>
+         <p>Please click the link below to verify this email address:</p>
+         <p><a href="${verifyUrl}">Verify Email Change</a></p>
+         <p>This link will expire in 24 hours.</p>
+         <p>If you did not request this change, please ignore this email.</p>`
+      );
+
+      return res.json({ 
+        message: 'Profile updated successfully. A verification email has been sent to your new email address. Please check your inbox and click the verification link to complete the email change.' 
+      });
+    }
+
+    // If no email was provided or email is undefined, return success for member data update
     res.json({ message: 'Profile updated successfully' });
 
   } catch (error) {

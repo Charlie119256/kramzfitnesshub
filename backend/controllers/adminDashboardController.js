@@ -390,6 +390,7 @@ exports.getDashboardData = async (req, res) => {
       Clerk.count({
         include: [{
           model: User,
+          as: 'user',
           where: { status: 'active' }
         }]
       }),
@@ -424,13 +425,14 @@ exports.getDashboardData = async (req, res) => {
         },
         include: [{
           model: Member,
+          as: 'member',
           attributes: ['gender']
         }],
         attributes: [
-          [sequelize.col('Member.gender'), 'gender'],
+          [sequelize.col('member.gender'), 'gender'],
           [sequelize.fn('COUNT', sequelize.col('MemberMembership.member_membership_id')), 'count']
         ],
-        group: ['Member.gender']
+        group: ['member.gender']
       }),
       Announcement.findAll({
         order: [['created_at', 'DESC']],

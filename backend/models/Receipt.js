@@ -20,8 +20,9 @@ const Receipt = sequelize.define('Receipt', {
     allowNull: false,
   },
   payment_method: {
-    type: DataTypes.ENUM('cash', 'gcash'),
+    type: DataTypes.STRING,
     allowNull: false,
+    defaultValue: 'cash',
   },
   reference_number: {
     type: DataTypes.STRING(100),

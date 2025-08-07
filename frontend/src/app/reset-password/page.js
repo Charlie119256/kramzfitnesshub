@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { EyeIcon, EyeSlashIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline';
+import ResponsiveAlert from '../../components/common/ResponsiveAlert';
 
 export default function ResetPassword() {
   const [formData, setFormData] = useState({
@@ -122,13 +123,11 @@ export default function ResetPassword() {
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-6">
-                {message && (
-                  <div className="bg-red-50 border border-red-200 rounded-md p-3">
-                    <p className="text-sm text-red-600" style={{ fontFamily: 'Poppins, sans-serif', fontSize: '14px' }}>
-                      {message}
-                    </p>
-                  </div>
-                )}
+                <ResponsiveAlert
+                  type={status === 'error' ? 'error' : 'info'}
+                  message={message}
+                  onClose={() => setMessage('')}
+                />
 
                 <div>
                   <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2" style={{ fontFamily: 'Poppins, sans-serif', fontSize: '14px' }}>

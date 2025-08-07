@@ -6,6 +6,7 @@ const { authenticate } = require('../middlewares/auth');
 router.post('/register', userController.register);
 router.post('/login', userController.login);
 router.get('/verify-email', userController.verifyEmail);
+router.get('/verify-email-change', userController.verifyEmailChange);
 router.post('/resend-verification', userController.resendVerification);
 router.post('/request-password-reset', userController.requestPasswordReset);
 router.post('/reset-password', userController.resetPassword);

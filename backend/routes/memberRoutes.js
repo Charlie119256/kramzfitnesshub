@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const memberController = require('../controllers/memberController');
 const { authenticate } = require('../middlewares/auth');
+const Member = require('../models/Member');
 
 // Member profile routes
 router.get('/profile/:memberId', authenticate, memberController.getMemberProfile);

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
+import ResponsiveAlert from '../../components/common/ResponsiveAlert';
 
 export default function Register() {
   const [formData, setFormData] = useState({
@@ -245,13 +246,11 @@ export default function Register() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {error && (
-              <div className="bg-red-50 border border-red-200 rounded-md p-4">
-                <p className="text-sm text-red-600" style={{ fontFamily: 'Poppins, sans-serif', fontSize: '14px' }}>
-                  {error}
-                </p>
-              </div>
-            )}
+            <ResponsiveAlert
+              type="error"
+              message={error}
+              onClose={() => setError('')}
+            />
 
             {/* Personal Information */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

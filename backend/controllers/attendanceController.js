@@ -1,6 +1,7 @@
 const Attendance = require('../models/Attendance');
 const Member = require('../models/Member');
 const MemberMembership = require('../models/MemberMembership');
+const User = require('../models/User');
 const { Op } = require('sequelize');
 
 exports.checkIn = async (req, res) => {
@@ -142,10 +143,68 @@ exports.getTodayAttendance = async (req, res) => {
     const todayStr = new Date().toISOString().slice(0, 10);
     const records = await Attendance.findAll({
       where: { date: todayStr },
+      include: [
+        {
+          model: Member,
+          as: 'member'
+        },
+        {
+          model: MembershipType,
+          as: 'membership_type'
+        }
+      ],
       order: [['time_in', 'ASC']]
     });
     return res.status(200).json(records);
   } catch (error) {
     return res.status(500).json({ message: 'Failed to fetch today\'s attendance.', error: error.message });
+  }
+};
+
+exports.getAllAttendance = async (req, res) => {
+  try {
+    if (!['admin', 'clerk'].includes(req.user.role)) return res.status(403).json({ message: 'Forbidden.' });
+    
+    const { date, member_id, status } = req.query;
+    let where = {};
+    
+    // Filter by date if provided
+    if (date) {
+      where.date = date;
+    }
+    
+    // Filter by member_id if provided
+    if (member_id) {
+      where.member_id = member_id;
+    }
+    
+    // Filter by status if provided
+    if (status) {
+      where.status = status;
+    }
+    
+    const records = await Attendance.findAll({
+      where,
+      include: [
+        {
+          model: Member,
+          as: 'member',
+          include: [
+            {
+              model: User,
+              as: 'user'
+            }
+          ]
+        },
+        {
+          model: MembershipType,
+          as: 'membership_type'
+        }
+      ],
+      order: [['date', 'DESC'], ['time_in', 'DESC']]
+    });
+    return res.status(200).json(records);
+  } catch (error) {
+    return res.status(500).json({ message: 'Failed to fetch attendance records.', error: error.message });
   }
 }; 

@@ -17,6 +17,9 @@ const workoutRoutes = require('./routes/workoutRoutes');
 const adminDashboardRoutes = require('./routes/adminDashboardRoutes');
 const clerkDashboardRoutes = require('./routes/clerkDashboardRoutes');
 const memberDashboardRoutes = require('./routes/memberDashboardRoutes');
+const expensesRoutes = require('./routes/expensesRoutes');
+const earningsRoutes = require('./routes/earningsRoutes');
+const membersManagementRoutes = require('./routes/membersManagementRoutes');
 const sequelize = require('./config/database');
 
 // Import model associations
@@ -47,6 +50,29 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'Backend server is running' });
 });
 
+// Test uploads directory
+app.get('/api/test-uploads', (req, res) => {
+  const fs = require('fs');
+  const uploadsPath = path.join(__dirname, 'uploads');
+  const profilePicturesPath = path.join(uploadsPath, 'profile-pictures');
+  
+  try {
+    const uploadsExists = fs.existsSync(uploadsPath);
+    const profilePicturesExists = fs.existsSync(profilePicturesPath);
+    const files = profilePicturesExists ? fs.readdirSync(profilePicturesPath) : [];
+    
+    res.json({
+      uploadsExists,
+      profilePicturesExists,
+      files,
+      uploadsPath,
+      profilePicturesPath
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Serve uploads directory
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
@@ -65,6 +91,9 @@ app.use('/api/workouts', workoutRoutes);
 app.use('/api/admin-dashboard', adminDashboardRoutes);
 app.use('/api/clerk-dashboard', clerkDashboardRoutes);
 app.use('/api/member-dashboard', memberDashboardRoutes);
+app.use('/api/expenses', expensesRoutes);
+app.use('/api/earnings', earningsRoutes);
+app.use('/api/members-management', membersManagementRoutes);
 
 const PORT = process.env.PORT || 5000;
 
